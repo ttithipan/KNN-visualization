@@ -21,3 +21,35 @@ test('Separated neighborhoods have zero one-neighbor error',()=>assert.equal(val
 test('Validation caps k at available neighbors',()=>assert.equal(validation(data,99,'euclidean','uniform'),1));
 test('Validation needs at least two examples',()=>{assert.equal(validation([],1,'euclidean','uniform'),null);assert.equal(validation([data[0]],1,'euclidean','uniform'),null)});
 test('Both metrics and voting rules give expected end-to-end predictions',()=>{for(const metric of ['euclidean','manhattan'])for(const weight of ['uniform','distance']){assert.equal(vote(rank(data,{x:1,y:1},metric).slice(0,3),weight).winner,'A');assert.equal(vote(rank(data,{x:9,y:9},metric).slice(0,3),weight).winner,'B')}});
+
+function tableHarness(phase=2,tablePage=0,used=0){
+  const elements=Object.fromEntries(['neighbors','tableSummary','previousRows','nextRows'].map(id=>[id,{}]));
+  const ranked=Array.from({length:9},(_,i)=>({id:i+1,label:i%2?'B':'A',d:i+.25}));
+  const state=vm.createContext({phase,tablePage,used,ranked,colors:{A:'blue',B:'orange'},$:id=>elements[id]});
+  const tableSource=source.slice(source.indexOf('function renderNeighborTable'),source.indexOf('function render(){'));
+  vm.runInContext(tableSource+';renderNeighborTable();',state);
+  return {elements,state};
+}
+test('Neighbor pagination limits rows and preserves absolute rank',()=>{
+  const {elements}=tableHarness(2,1);
+  assert.equal((elements.neighbors.innerHTML.match(/<tr /g)||[]).length,4);
+  assert.match(elements.neighbors.innerHTML,/5 \/ #5/);
+  assert.match(elements.neighbors.innerHTML,/8 \/ #8/);
+  assert.equal(elements.tableSummary.textContent,'Showing 5–8 of 9 · nearest first');
+  assert.equal(elements.previousRows.disabled,false);
+  assert.equal(elements.nextRows.disabled,false);
+});
+test('Neighbor pagination disables unavailable navigation',()=>{
+  assert.equal(tableHarness(2,0).elements.previousRows.disabled,true);
+  const {elements}=tableHarness(2,2);
+  assert.equal(elements.nextRows.disabled,true);
+  assert.equal((elements.neighbors.innerHTML.match(/<tr /g)||[]).length,1);
+  const ready=tableHarness(0).elements;
+  assert.equal(ready.previousRows.disabled,true);
+  assert.equal(ready.nextRows.disabled,true);
+});
+test('Neighbor table marks voted neighbors on later pages',()=>{
+  const {elements}=tableHarness(3,1,5);
+  assert.equal((elements.neighbors.innerHTML.match(/class="selected"/g)||[]).length,1);
+  assert.match(elements.neighbors.innerHTML,/5 \/ #5/);
+});

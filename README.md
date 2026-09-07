@@ -9,10 +9,10 @@ Live application: https://ttithipan.github.io/KNN-visualization/
 1. Generate one of three dataset patterns, or add/delete labeled points on the canvas.
 2. Move the diamond-shaped query; arrow keys also move it when the canvas has focus.
 3. Choose k, Euclidean or Manhattan distance, and equal or inverse-distance voting.
-4. Use **Next step** to measure distances, rank neighbors, add votes, and predict. **Play to completion** runs these stages automatically; it can be paused.
+4. Use **Next step** to measure distances, rank neighbors, add votes, and predict. **Play** runs these stages automatically; it can be paused.
 5. Watch the decision regions, neighbor table, vote totals, and validation error update together.
 
-The two desktop columns scroll independently. Small screens use a stacked layout.
+The layout starts with a single column on mobile, using one natural page scroll and a fixed Step/Play dock with live prediction status. At 900px it expands into two desktop columns. Panels and tables have no internal scrollbars; the neighbor table uses four-row pages and automatically follows the current vote. All primary phone controls have 44px touch targets.
 
 ## Mathematical interpretation
 
@@ -29,7 +29,7 @@ The interaction reference is https://llm-ce-kmitl.github.io/learning/ml-viz/line
 
 Open `index.html` directly, or serve this directory with any static web server.
 Run mathematical unit/integration tests with `node --test tests/knn.test.cjs`.
-Browser verification covers stepping, playback completion, disabled empty-data controls, point creation/deletion, and regeneration.
+Browser verification covers stepping, playback completion, disabled empty-data controls, point creation/deletion, regeneration, pagination, and mobile/desktop layouts.
 
 ## Group — Peanut Butter · CEi KMITL
 
