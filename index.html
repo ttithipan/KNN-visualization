@@ -67,6 +67,14 @@ tr.selected { background:#d99a7d14; }
 .vote strong { float:right; font:600 16px/1.2 system-ui,sans-serif; color:var(--text); }
 .bar { height:4px; background:#42413a; margin-top:5px; border-radius:4px; overflow:hidden; }
 .bar i { display:block; height:100%; transition:width .2s; }
+.report-positive { margin-top:12px; }
+.report-positive select { flex:initial; width:auto; }
+.report-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:10px 0; }
+.report-metric { background:#23231f; border:1px solid var(--line); border-radius:7px; padding:8px; font-size:11px; color:var(--muted); }
+.report-metric strong { display:block; color:var(--text); font-size:18px; margin-top:3px; }
+.confusion { border:1px solid var(--line); border-radius:7px; overflow:hidden; margin-top:10px; }
+.confusion th:first-child { width:44%; }
+.confusion th,.confusion td { padding:8px 6px; }
 .metric { font-size:22px; font-weight:600; letter-spacing:-.6px; }
 .metric small { font-size:11px; font-weight:400; color:var(--muted); letter-spacing:0; }
 #lossCanvas { height:110px; }
@@ -105,7 +113,7 @@ a { color:var(--mint); }
 <div class="toolbar" id="tools"><button data-mode="query" class="active" aria-pressed="true">◇ Move query</button><button data-mode="A" aria-pressed="false">+ Class A</button><button data-mode="B" aria-pressed="false">+ Class B</button><button data-mode="delete" aria-pressed="false">− Delete</button></div>
 <div class="plot"><canvas id="dataCanvas" tabindex="0" aria-label="Training data. Click with the selected tool. Arrow keys move the query point." role="img"></canvas></div>
 <div class="legend"><span><i class="dot blue"></i>A · circles</span><span><i class="dot orange"></i>B · squares</span><span><i class="dot mint"></i>Query · diamond</span></div>
-<div class="toolbar"><select id="dataset" aria-label="Dataset pattern"><option value="blobs">Two neighborhoods</option><option value="moons">Curved neighborhoods</option><option value="mixed">Mixed neighborhoods</option></select><button id="generate">↻ Random dataset</button><button id="clear">Clear</button></div><div class="small" id="canvasHint">Tip: move the query near the overlap to see a closer vote.</div>
+<div class="toolbar"><select id="dataset" aria-label="Dataset pattern"><option value="blobs">Two neighborhoods</option><option value="moons">Curved neighborhoods</option><option value="mixed">Mixed neighborhoods</option><option value="imbalanced">Imbalanced · 28 A / 8 B</option></select><button id="generate">↻ Random dataset</button><button id="clear">Clear</button></div><div class="small" id="canvasHint">Tip: move the query near the overlap to see a closer vote.</div>
 </section>
 <section class="panel"><div class="panel-head"><h2><span class="number">02</span>Set the rules &amp; run</h2><span class="small">Start with Next step →</span></div><div class="settings">
 <div class="formrow"><label for="k">Neighbors <b>k</b></label><input id="k" type="range" min="1" max="15" step="1" value="5"><output id="kValue">5</output></div>
@@ -125,7 +133,14 @@ a { color:var(--mint); }
 <div class="votes"><div class="vote">Class A · circles<strong id="voteA">0</strong><div class="bar"><i id="barA" style="background:var(--blue);width:0"></i></div></div><div class="vote">Class B · squares<strong id="voteB">0</strong><div class="bar"><i id="barB" style="background:var(--orange);width:0"></i></div></div></div>
 <details><summary>How the mathematics works</summary><p class="note">Euclidean distance uses the Pythagorean theorem. Manhattan distance adds horizontal and vertical travel. Each selected neighbor contributes 1 vote, or 1/d for distance weighting. If a neighbor is exactly at the query, only exact matches vote. Ties go to the closest selected neighbor, then the lowest point ID. Both features use the same 0–10 scale.</p></details>
 </section>
-<section class="panel"><div class="panel-head"><h2><span class="number">04</span>Validation error</h2><div class="metric" id="lossValue">— <small>misclassified</small></div></div><canvas id="lossCanvas" role="img" aria-label="Validation error by number of neighbors considered"></canvas><p class="small" id="lossSummary">Error appears when the first neighbor votes.</p><details><summary>What does this error mean?</summary><p class="note">We hide each point’s label, predict it from the other points, and count mistakes: error = incorrect predictions / total points. This is leave-one-out validation. Lower is better, but the curve may rise or fall. KNN does not train or converge; Play runs until its prediction is complete.</p></details></section>
+<section class="panel"><div class="panel-head"><h2><span class="number">04</span>Validation error</h2><div class="metric" id="lossValue">— <small>misclassified</small></div></div><canvas id="lossCanvas" role="img" aria-label="Validation error by number of neighbors considered"></canvas><p class="small" id="lossSummary">Error appears when the first neighbor votes.</p><details id="classificationReport"><summary id="reportSummary">Precision, recall &amp; confusion matrix</summary>
+<div class="formrow report-positive"><label for="positiveClass">Positive class</label><select id="positiveClass"><option value="B">Class B</option><option value="A">Class A</option></select></div>
+<p class="note" id="classBalance"></p>
+<div class="report-metrics" id="reportMetrics" aria-live="polite"></div>
+<div class="confusion"><table aria-label="Validation confusion matrix"><thead><tr><th>Actual ↓ / Predicted →</th><th id="positiveHeading">B (+)</th><th id="negativeHeading">A (−)</th></tr></thead><tbody><tr><th id="actualPositive">B (+)</th><td id="truePositive">TP —</td><td id="falseNegative">FN —</td></tr><tr><th id="actualNegative">A (−)</th><td id="falsePositive">FP —</td><td id="trueNegative">TN —</td></tr></tbody></table></div>
+<p class="note">TP / TN are correct positive / negative predictions. FP is a false alarm; FN is a missed positive. These counts use every point as a held-out example, not just the query.</p>
+<details><summary>Read the formulas</summary><p class="note">Precision = TP / (TP + FP): how often a positive prediction is correct.<br>Recall = TPR = TP / (TP + FN): how many actual positives are found.<br>F1 = 2TP / (2TP + FP + FN): balances precision and recall.<br>Accuracy = (TP + TN) / all points.<br>FPR = FP / (FP + TN): how many actual negatives trigger false alarms.<br>“—” means the denominator is zero, so that metric is undefined. Accuracy can hide poor minority-class recall; inspect both classes by changing the positive class.</p></details>
+</details><details><summary>What does this error mean?</summary><p class="note">We hide each point’s label, predict it from the other points, and count mistakes: error = incorrect predictions / total points. This is leave-one-out validation. Lower is better, but the curve may rise or fall. KNN does not train or converge; Play runs until its prediction is complete.</p></details></section>
 </div>
 </main>
 <footer><span><b>Peanut Butter · CEi KMITL</b><br><span id="members">67011214 Nuttawee Wachiratienchai · 67011220 Pacharapol Padungkarn · 67011246 Pavikan Boonnaum<br>67011594 Chuthathip Termchaikul · 67011671 Tithipan Thepsuthin</span></span><span>KNN EXPLORER · <a href="https://github.com/ttithipan/KNN-visualization">Source ↗</a></span></footer>
@@ -137,12 +152,29 @@ const options=()=>({metric:$('distance').value,weight:$('weight').value,k:Math.m
 function distance(a,b,metric){return metric==='manhattan'?Math.abs(a.x-b.x)+Math.abs(a.y-b.y):Math.hypot(a.x-b.x,a.y-b.y)}
 function rank(data,q,metric){return data.map(p=>({...p,d:distance(p,q,metric)})).sort((a,b)=>a.d-b.d||a.id-b.id)}
 function vote(neighbors,weight){let totals={A:0,B:0};const exact=neighbors.filter(p=>p.d<1e-9);const eligible=weight==='distance'&&exact.length?exact:neighbors;for(const p of eligible)totals[p.label]+=weight==='distance'&&!exact.length?1/p.d:1;const winner=totals.A===totals.B?(neighbors[0]?.label||null):(totals.A>totals.B?'A':'B');return {totals,winner}}
-function validation(data,k,metric,weight){if(data.length<2)return null;let wrong=0;for(const p of data){const nearest=rank(data.filter(other=>other.id!==p.id),p,metric).slice(0,Math.min(k,data.length-1));if(vote(nearest,weight).winner!==p.label)wrong++}return wrong/data.length}
+function evaluateValidation(data,k,metric,weight){
+  if(data.length<2)return null;
+  const confusion={AA:0,AB:0,BA:0,BB:0};
+  for(const point of data){
+    const nearest=rank(data.filter(other=>other.id!==point.id),point,metric).slice(0,Math.min(k,data.length-1));
+    const predicted=vote(nearest,weight).winner;
+    confusion[point.label+predicted]++;
+  }
+  return {confusion,error:(confusion.AB+confusion.BA)/data.length};
+}
+function validation(data,k,metric,weight){return evaluateValidation(data,k,metric,weight)?.error??null;}
+function classificationMetrics(confusion,positive){
+  const negative=positive==='A'?'B':'A';
+  const tp=confusion[positive+positive],tn=confusion[negative+negative];
+  const fp=confusion[negative+positive],fn=confusion[positive+negative];
+  const ratio=(numerator,denominator)=>denominator?numerator/denominator:null;
+  return {tp,tn,fp,fn,precision:ratio(tp,tp+fp),recall:ratio(tp,tp+fn),f1:ratio(2*tp,2*tp+fp+fn),accuracy:ratio(tp+tn,tp+tn+fp+fn),tpr:ratio(tp,tp+fn),fpr:ratio(fp,fp+tn)};
+}
 function stop(){clearTimeout(timer);timer=null;$('play').textContent='▶ Play'}
 function reset(){stop();phase=0;used=0;tablePage=0;history=[];ranked=rank(points,query,options().metric);render()}
-function advance(){if(!points.length||phase===4)return;if(phase===0)phase=1;else if(phase===1){phase=2;tablePage=0;}else if(used<options().k){phase=3;used++;tablePage=Math.floor((used-1)/4);const o=options();history.push({k:used,error:validation(points,used,o.metric,o.weight)})}else phase=4;if(phase===4)stop();render()}
+function advance(){if(!points.length||phase===4)return;if(phase===0)phase=1;else if(phase===1){phase=2;tablePage=0;}else if(used<options().k){phase=3;used++;tablePage=Math.floor((used-1)/4);const o=options();const report=evaluateValidation(points,used,o.metric,o.weight);history.push({k:used,error:report?.error??null,report})}else phase=4;if(phase===4)stop();render()}
 function play(){if(timer){stop();return}function tick(){advance();if(phase!==4&&points.length){timer=setTimeout(tick,+$('speed').value);$('play').textContent='Ⅱ Pause'}}tick()}
-function generate(){nextId=1;points=[];const pattern=$('dataset').value;for(let i=0;i<36;i++){let label=i<18?'A':'B',x,y;if(pattern==='moons'){const t=Math.random()*Math.PI;x=label==='A'?3.6+2.6*Math.cos(t):6.1+2.6*Math.cos(t);y=label==='A'?4+2.6*Math.sin(t):5.3-2.6*Math.sin(t);x+=(Math.random()-.5)*.6;y+=(Math.random()-.5)*.6}else{x=(label==='A'?3.3:6.7)+(Math.random()+Math.random()+Math.random()-1.5)*(pattern==='mixed'?4.1:2.9);y=(label==='A'?5.8:4.2)+(Math.random()+Math.random()+Math.random()-1.5)*3.4}points.push({id:nextId++,x:Math.max(.3,Math.min(9.7,x)),y:Math.max(.3,Math.min(9.7,y)),label})}query={x:5,y:5};reset()}
+function generate(){nextId=1;points=[];const pattern=$('dataset').value;for(let i=0;i<36;i++){let label=i<(pattern==='imbalanced'?28:18)?'A':'B',x,y;if(pattern==='moons'){const t=Math.random()*Math.PI;x=label==='A'?3.6+2.6*Math.cos(t):6.1+2.6*Math.cos(t);y=label==='A'?4+2.6*Math.sin(t):5.3-2.6*Math.sin(t);x+=(Math.random()-.5)*.6;y+=(Math.random()-.5)*.6}else{x=(label==='A'?3.3:6.7)+(Math.random()+Math.random()+Math.random()-1.5)*(pattern==='mixed'?4.1:2.9);y=(label==='A'?5.8:4.2)+(Math.random()+Math.random()+Math.random()-1.5)*3.4}points.push({id:nextId++,x:Math.max(.3,Math.min(9.7,x)),y:Math.max(.3,Math.min(9.7,y)),label})}query={x:5,y:5};reset()}
 function setupCanvas(canvas){const rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(rect.height*dpr);const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);return {ctx,w:rect.width,h:rect.height}}
 function drawData(){const {ctx,w,h}=setupCanvas($('dataCanvas')),pad=30,pw=w-2*pad,ph=h-2*pad;const px=x=>pad+x/10*pw,py=y=>h-pad-y/10*ph;ctx.clearRect(0,0,w,h);
 if(used){const o=options();for(let x=0;x<40;x++)for(let y=0;y<28;y++){const winner=vote(rank(points,{x:(x+.5)/4,y:10-(y+.5)*10/28},o.metric).slice(0,used),o.weight).winner;ctx.fillStyle=winner==='A'?'#93b4c520':'#d7b67520';ctx.fillRect(pad+x*pw/40,pad+y*ph/28,pw/40+.5,ph/28+.5)}}
@@ -152,6 +184,20 @@ for(const p of points){const selected=ranked.slice(0,used).some(n=>n.id===p.id);
 ctx.fillStyle=phase===4?colors[vote(ranked.slice(0,used),options().weight).winner]:'#d99a7d';ctx.strokeStyle='#faf5e7';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px(query.x),py(query.y)-8);ctx.lineTo(px(query.x)+8,py(query.y));ctx.lineTo(px(query.x),py(query.y)+8);ctx.lineTo(px(query.x)-8,py(query.y));ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle='#faf5e7';ctx.font='bold 11px system-ui';ctx.fillText('Q',px(query.x)+12,py(query.y)-10);
 }
 function drawLoss(){const {ctx,w,h}=setupCanvas($('lossCanvas')),left=36,top=15,bottom=h-30,right=w-14;ctx.clearRect(0,0,w,h);ctx.font='10px system-ui';for(let pct=0;pct<=100;pct+=25){const y=bottom-pct/100*(bottom-top);ctx.strokeStyle='#42413a';ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.stroke();ctx.fillStyle='#b1afa3';ctx.fillText(pct+'%',0,y+3)}const max=Math.max(2,options().k);const x=k=>left+(k-1)/(max-1)*(right-left),y=e=>bottom-e*(bottom-top);ctx.fillStyle='#b1afa3';for(let k=1;k<=max;k++)ctx.fillText(k,x(k)-3,h-14);ctx.fillText('Neighbors considered',Math.max(left,w/2-55),h-1);const valid=history.filter(p=>p.error!==null);ctx.strokeStyle='#d99a7d';ctx.lineWidth=2;ctx.beginPath();valid.forEach((p,i)=>i?ctx.lineTo(x(p.k),y(p.error)):ctx.moveTo(x(p.k),y(p.error)));ctx.stroke();for(const p of valid){ctx.fillStyle='#d99a7d';ctx.beginPath();ctx.arc(x(p.k),y(p.error),3.5,0,7);ctx.fill()}}
+function renderClassificationReport(){
+  const positive=$('positiveClass').value,negative=positive==='A'?'B':'A';
+  const report=history.at(-1)?.report;
+  const metrics=report?classificationMetrics(report.confusion,positive):null;
+  const percentage=value=>value===null||value===undefined?'—':(value*100).toFixed(1)+'%';
+  $('reportSummary').textContent=metrics?'Accuracy '+percentage(metrics.accuracy)+' · classification report':'Precision, recall & confusion matrix';
+  const positiveCount=points.filter(p=>p.label===positive).length;
+  $('classBalance').textContent='Actual labels: '+positiveCount+' '+positive+' (+), '+(points.length-positiveCount)+' '+negative+' (−). '+(metrics?'Report at '+used+' neighbor'+(used===1?'':'s')+'.':'Run until a neighbor votes to see the report.');
+  $('positiveHeading').textContent=$('actualPositive').textContent=positive+' (+)';
+  $('negativeHeading').textContent=$('actualNegative').textContent=negative+' (−)';
+  const fields=[['Precision','precision'],['Recall','recall'],['F1 score','f1'],['Accuracy','accuracy'],['TPR · recall','tpr'],['FPR','fpr']];
+  $('reportMetrics').innerHTML=fields.map(([label,key])=>'<div class="report-metric">'+label+'<strong>'+percentage(metrics?.[key])+'</strong></div>').join('');
+  for(const [id,label,key] of [['truePositive','TP','tp'],['trueNegative','TN','tn'],['falsePositive','FP','fp'],['falseNegative','FN','fn']])$(id).textContent=label+' '+(metrics?.[key]??'—');
+}
 function renderNeighborTable(){
   const display=phase===1?[...ranked].sort((a,b)=>a.id-b.id):ranked;
   const start=tablePage*4;
@@ -166,11 +212,12 @@ function renderNeighborTable(){
 function render(){const o=options(),result=vote(ranked.slice(0,used),o.weight);$('count').textContent=points.length+' TRAINING POINTS';$('kValue').value=o.k;$('step').disabled=!points.length||phase===4;$('play').disabled=!points.length||phase===4;$('stepLabel').textContent=phase===4?'COMPLETE':used?'NEIGHBOR '+used+' / '+o.k:['READY','DISTANCES','SORTED'][phase];document.querySelectorAll('.stage').forEach((el,i)=>el.classList.toggle('current',i===Math.max(0,phase-1)));
 const titles=['Who lives closest?','Measure every distance','Closest comes first','Let the neighbors vote','Prediction: Class '+result.winner];const descriptions=['Press Next step to begin. We’ll measure distances, rank neighbors, and vote on the query’s class.','Compare each point with Q ('+query.x.toFixed(2)+', '+query.y.toFixed(2)+'). Shorter distances mean more similar examples.','Sort by distance, smallest first. We will consider the first '+o.k+' neighbors.','Considering '+used+' of '+o.k+' neighbors. The shaded canvas shows predictions using this many neighbors everywhere.', 'The '+o.k+' nearest neighbors choose Class '+result.winner+'. Move the query or change k to explore a different decision.'];$('stateTitle').textContent=points.length?titles[phase]:'Add some examples';$('runStatus').textContent=points.length?(phase===4?'Prediction: Class '+result.winner:phase===3?'Voting · '+used+' / '+o.k+' neighbors · A '+result.totals.A.toFixed(o.weight==='uniform'?0:1)+' : B '+result.totals.B.toFixed(o.weight==='uniform'?0:1):['Ready · tap Next step to begin','Measuring distances · tap Next step','Neighbors ranked · tap Next step'][phase]):'Add examples to begin';$('stateText').textContent=points.length?descriptions[phase]:'Choose Class A or Class B and click the canvas, or generate a random dataset.';
 let formula=o.metric==='euclidean'?'d = √((x − qₓ)² + (y − qᵧ)²)':'d = |x − qₓ| + |y − qᵧ|';if(phase===1&&ranked.length){const p=ranked[0];formula+='\nClosest: '+p.d.toFixed(3)+' units (point #'+p.id+')'}if(phase>=3)formula=o.weight==='uniform'?'vote = 1 per neighbor · largest total wins':'vote = 1 / distance · exact matches take priority';$('formula').textContent=formula;
-renderNeighborTable();
+renderNeighborTable();renderClassificationReport();
 for(const label of ['A','B']){$('vote'+label).textContent=o.weight==='uniform'?result.totals[label]:result.totals[label].toFixed(2);$('bar'+label).style.width=(result.totals[label]/(result.totals.A+result.totals.B||1)*100)+'%'}const last=history.at(-1);$('lossValue').innerHTML=last&&last.error!==null?(last.error*100).toFixed(1)+'% <small>misclassified</small>':'— <small>'+(points.length<2?'need at least 2 points':'misclassified')+'</small>';$('lossSummary').textContent=last&&last.error!==null?'At '+last.k+' neighbor'+(last.k===1?'':'s')+': '+Math.round(last.error*points.length)+' of '+points.length+' points misclassified (each predicted from the others).':'Error appears when the first neighbor votes. Lower is better.';drawData();drawLoss()}
 $('tools').addEventListener('click',event=>{const button=event.target.closest('[data-mode]');if(!button)return;mode=button.dataset.mode;document.querySelectorAll('[data-mode]').forEach(b=>{b.classList.toggle('active',b===button);b.setAttribute('aria-pressed',b===button)});$('canvasHint').textContent=mode==='delete'?'Click within 14 pixels of a point to delete it.':mode==='query'?'Click to move Q. You can also focus the canvas and use arrow keys.':'Click to add a Class '+mode+' point (up to 120 points).'});
 $('dataCanvas').addEventListener('pointerdown',event=>{const r=event.currentTarget.getBoundingClientRect(),x=Math.max(0,Math.min(10,(event.clientX-r.left-30)/(r.width-60)*10)),y=Math.max(0,Math.min(10,(r.height-30-event.clientY+r.top)/(r.height-60)*10));if(mode==='query')query={x,y};else if(mode==='delete'){let nearest=null,best=14;for(const p of points){const d=Math.hypot((p.x-x)/10*(r.width-60),(p.y-y)/10*(r.height-60));if(d<best){best=d;nearest=p}}if(nearest)points=points.filter(p=>p.id!==nearest.id)}else if(points.length<120)points.push({id:nextId++,x,y,label:mode});reset()});
 $('dataCanvas').addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;event.preventDefault();query.x=Math.max(0,Math.min(10,query.x+(event.key==='ArrowRight'?.2:event.key==='ArrowLeft'?-.2:0)));query.y=Math.max(0,Math.min(10,query.y+(event.key==='ArrowUp'?.2:event.key==='ArrowDown'?-.2:0)));reset()});
+$('positiveClass').onchange=renderClassificationReport;
 $('previousRows').onclick=()=>{tablePage--;renderNeighborTable()};$('nextRows').onclick=()=>{tablePage++;renderNeighborTable()};
 $('step').onclick=()=>{stop();advance()};$('play').onclick=play;$('reset').onclick=reset;$('generate').onclick=generate;$('clear').onclick=()=>{points=[];reset()};for(const id of ['k','distance','weight'])$(id).addEventListener('input',reset);new ResizeObserver(()=>{drawData();drawLoss()}).observe($('dataCanvas'));generate();
 </script>

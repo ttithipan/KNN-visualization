@@ -53,3 +53,33 @@ test('Neighbor table marks voted neighbors on later pages',()=>{
   assert.equal((elements.neighbors.innerHTML.match(/class="selected"/g)||[]).length,1);
   assert.match(elements.neighbors.innerHTML,/5 \/ #5/);
 });
+
+test('Confusion metrics match hand-calculated binary example',()=>{
+  const m=context.classificationMetrics({AA:40,AB:10,BA:5,BB:15},'B');
+  assert.equal(m.tp,15);assert.equal(m.tn,40);assert.equal(m.fp,10);assert.equal(m.fn,5);
+  assert.equal(m.precision,.6);assert.equal(m.recall,.75);assert.equal(m.tpr,m.recall);
+  assert.equal(m.f1,2/3);assert.equal(m.accuracy,55/70);assert.equal(m.fpr,.2);
+});
+test('Switching positive class swaps confusion roles correctly',()=>{
+  const m=context.classificationMetrics({AA:40,AB:10,BA:5,BB:15},'A');
+  assert.equal(m.tp,40);assert.equal(m.tn,15);assert.equal(m.fp,5);assert.equal(m.fn,10);
+  assert.equal(m.precision,40/45);assert.equal(m.recall,.8);assert.equal(m.fpr,.25);
+});
+test('Imbalance exposes zero minority recall despite high accuracy',()=>{
+  const m=context.classificationMetrics({AA:90,AB:0,BA:10,BB:0},'B');
+  assert.equal(m.accuracy,.9);assert.equal(m.precision,null);assert.equal(m.recall,0);assert.equal(m.f1,0);assert.equal(m.fpr,0);
+});
+test('Undefined rates never produce NaN or infinity',()=>{
+  const m=context.classificationMetrics({AA:10,AB:0,BA:0,BB:0},'B');
+  assert.equal(m.recall,null);assert.equal(m.precision,null);assert.equal(m.f1,null);assert.equal(m.accuracy,1);
+});
+test('Validation confusion counts cover all held-out examples and match error',()=>{
+  for(const metric of ['euclidean','manhattan'])for(const weight of ['uniform','distance']){
+    const report=context.evaluateValidation(data,3,metric,weight);
+    assert.equal(Object.values(report.confusion).reduce((a,b)=>a+b,0),data.length);
+    const m=context.classificationMetrics(report.confusion,'B');
+    assert.equal(m.accuracy,1-report.error);
+  }
+  const pair=context.evaluateValidation([data[0],data[2]],1,'euclidean','uniform');
+  assert.equal(pair.confusion.AB,1);assert.equal(pair.confusion.BA,1);
+});

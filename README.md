@@ -6,17 +6,20 @@ Live application: https://ttithipan.github.io/KNN-visualization/
 
 ## Explore
 
-1. Generate one of three dataset patterns, or add/delete labeled points on the canvas.
+1. Generate one of four dataset patterns, or add/delete labeled points on the canvas.
 2. Move the diamond-shaped query; arrow keys also move it when the canvas has focus.
 3. Choose k, Euclidean or Manhattan distance, and equal or inverse-distance voting.
 4. Use **Next step** to measure distances, rank neighbors, add votes, and predict. **Play** runs these stages automatically; it can be paused.
 5. Watch the decision regions, neighbor table, vote totals, and validation error update together.
+6. Expand the classification report for TP, TN, FP, FN, precision, recall, F1, accuracy, TPR, and FPR. Choose which class is positive. Try the imbalanced preset (28 A, 8 B) to see why accuracy alone can be misleading.
 
 The layout starts with a single column on mobile, using one natural page scroll and a fixed Step/Play dock with live prediction status. At 900px it expands into two desktop columns. Panels and tables have no internal scrollbars; the neighbor table uses four-row pages and automatically follows the current vote. All primary phone controls have 44px touch targets.
 
 ## Mathematical interpretation
 
 KNN is a lazy learner: there are no weights to train, epochs, or convergence loss. The assignment's convergence control is represented by playback until the prediction is complete. The loss chart shows leave-one-out classification error as the number of considered neighbors increases. Error is not necessarily monotonic. Each held-out point is excluded from its own neighbors; validation caps k at N − 1.
+
+The classification report uses those same held-out predictions. Recall and TPR are the same rate. Undefined ratios (zero denominator) display an em dash rather than zero. Switching the positive class changes class-specific metrics without rerunning the prediction.
 
 Ties use the nearest selected neighbor, with point IDs breaking equal-distance ties. Under distance weighting, exact matches take priority. Coordinates share the same 0–10 scale. The canvas is a rectangular view of that coordinate space; distances are computed in coordinate units.
 
