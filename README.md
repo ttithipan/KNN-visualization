@@ -13,7 +13,7 @@ Live application: https://ttithipan.github.io/KNN-visualization/
 5. Watch the decision regions, neighbor table, vote totals, and validation error update together.
 6. Expand the classification report for TP, TN, FP, FN, precision, recall, F1, accuracy, TPR, and FPR. Choose which class is positive. Try the imbalanced preset (28 A, 8 B) to see why accuracy alone can be misleading.
 
-The layout starts with a single column on mobile, using one natural page scroll and a fixed Step/Play dock with live prediction status. At 900px it expands into a 2×2 desktop grid, with matching panel heights in each row. Panels and tables have no internal scrollbars; the neighbor table uses four-row pages and automatically follows the current vote. All primary phone controls have 44px touch targets.
+The layout starts with a single column on mobile, using one natural page scroll and a fixed Step/Play dock with live prediction status. At 900px it becomes a fixed-height app shell: the header and footer stay put, the four panels keep a 2×2 alignment (row heights are kept in sync so the left and right columns line up), and each column scrolls on its own — showing a scrollbar only when that column's content overflows (for example on a short viewport). The neighbor table uses four-row pages and automatically follows the current vote. All primary phone controls have 44px touch targets.
 
 ## Mathematical interpretation
 
